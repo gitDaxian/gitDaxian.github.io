@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>SpringCloud总览</title>
+      <link href="/posts/22987/"/>
+      <url>/posts/22987/</url>
+      
+        <content type="html"><![CDATA[<p><img src="/img/22987/cloud1.png" alt="image-20231023222616284"></p><h2 id="🍁微服务架构"><a href="#🍁微服务架构" class="headerlink" title="🍁微服务架构"></a>🍁微服务架构</h2><ul><li>单一职责：微服务拆分粒度更小，每一个服务都对应唯一的业务能力，做到单一职责</li><li>自治：团队独立、技术独立、数据独立，独立部署和交付</li><li>面向服务：服务提供统一标准的接口，与语言和技术无关</li><li>隔离性强：服务调用做好隔离、容错、降级，避免出现级联问题</li></ul><p><img src="/img/22987/cloud2.png" alt="image-20231023223116302"></p><p>优点：拆分粒度更小、服务更独立、<strong>耦合度更低</strong></p><p>缺点：<strong>架构复杂</strong>，运维、监控、部署难度提高</p><h2 id="🍁Eureka和Nacos"><a href="#🍁Eureka和Nacos" class="headerlink" title="🍁Eureka和Nacos"></a>🍁Eureka和Nacos</h2><h3 id="Eureka注册中心"><a href="#Eureka注册中心" class="headerlink" title="Eureka注册中心"></a>Eureka注册中心</h3><p><img src="/img/22987/cloud3.png" alt="image-20231023224251854"></p><h4 id="1-注册和拉取"><a href="#1-注册和拉取" class="headerlink" title="1 注册和拉取"></a>1 注册和拉取</h4><p>服务注册：user-service服务实例启动后，将自己的信息注册到eureka-server（Eureka服务端）。eureka-server保存服务名称到服务实例地址列表的映射关系</p><p>服务拉取（发现）：order-service根据服务名称，拉取实例地址列表</p><h4 id="2-负载均衡和远程调用"><a href="#2-负载均衡和远程调用" class="headerlink" title="2 负载均衡和远程调用"></a>2 负载均衡和远程调用</h4><p>order-service从实例列表中利用负载均衡算法选中一个实例地址，并发起远程调用</p><p><img src="/img/22987/cloud4.png" alt="image-20231023225031849"></p><p>以上步骤说明如下：</p><ol><li>拦截RestTemplate请求<a href="http://userservice/user/1">http://userservice/user/1</a></li><li>RibbonLoadBalancerClient会从请求url中获取服务名称，也就是user-service</li><li>DynamicServerListLoadBalancer根据user-service到eureka拉取服务列表</li><li>eureka返回列表，localhost:8081、localhost:8082</li><li>IRule利用内置负载均衡规则，从列表中选择一个，例如localhost:8081</li><li>RibbonLoadBalancerClient修改请求地址，用localhost:8081替代userservice，得到<a href="http://localhost:8081/user/1%EF%BC%8C%E5%8F%91%E8%B5%B7%E7%9C%9F%E5%AE%9E%E8%AF%B7%E6%B1%82">http://localhost:8081/user/1，发起真实请求</a></li></ol><h4 id="3-心跳检测"><a href="#3-心跳检测" class="headerlink" title="3 心跳检测"></a>3 心跳检测</h4><p>user-service会每隔一段时间（默认30秒）向eureka-server发起请求，报告自己状态，称为心跳。当超过一定时间<strong>没有发送心跳</strong>时，eureka-server会认为微服务实例故障，将该实例从服务列表中<strong>剔除</strong></p><h3 id="Nacos注册中心"><a href="#Nacos注册中心" class="headerlink" title="Nacos注册中心"></a>Nacos注册中心</h3><p><img src="/img/22987/cloud5.png" alt="image-20231023225517829"></p><h4 id="1-集群"><a href="#1-集群" class="headerlink" title="1 集群"></a>1 集群</h4><p><img src="/img/22987/cloud6.png" alt="image-20231023225710815"></p><p>微服务互相访问时，应该尽可能访问同集群实例，因为本地访问速度更快。当本集群内不可用时，才访问其它集群</p><h4 id="2-环境隔离"><a href="#2-环境隔离" class="headerlink" title="2 环境隔离"></a>2 环境隔离</h4><p>nacos中可以有多个namespace，namespace下可以有group、service等</p><p>不同namespace之间相互隔离，不同namespace的服务<strong>互相不可见</strong></p><h4 id="3-临时实例和非临时实例"><a href="#3-临时实例和非临时实例" class="headerlink" title="3 临时实例和非临时实例"></a>3 临时实例和非临时实例</h4><p>临时实例：如果实例宕机超过一定时间，<strong>会从服务列表剔除</strong>，默认的类型</p><p>非临时实例：如果实例宕机，<strong>不会从服务列表剔除</strong>，也可以叫永久实例</p><h3 id="区别Eureka和Nacos"><a href="#区别Eureka和Nacos" class="headerlink" title="区别Eureka和Nacos"></a>区别Eureka和Nacos</h3><h4 id="1-共同点"><a href="#1-共同点" class="headerlink" title="1 共同点"></a>1 共同点</h4><ul><li>都支持服务注册和服务拉取</li><li>都支持服务提供者心跳方式做健康检测</li></ul><h4 id="2-区别"><a href="#2-区别" class="headerlink" title="2 区别"></a>2 区别</h4><ul><li>Nacos支持服务端主动检测提供者状态：<strong>临时</strong>实例采用<strong>心跳</strong>模式，<strong>非临时</strong>实例采用<strong>主动检测</strong>模式</li><li>临时实例心跳不正常会被剔除，<strong>非临时实例则不会被剔除</strong></li><li>Nacos支持服务列表变更的<strong>消息推送</strong>模式，服务列表更新更及时</li><li>Nacos集群默认采用AP方式，当集群中存在非临时实例时，采用<strong>CP</strong>模式；Eureka采用<strong>AP</strong>方式</li></ul><h2 id="🍁Feign远程调用"><a href="#🍁Feign远程调用" class="headerlink" title="🍁Feign远程调用"></a>🍁Feign远程调用</h2><h3 id="问题演示"><a href="#问题演示" class="headerlink" title="问题演示"></a>问题演示</h3><p><img src="/img/22987/cloud7.png" alt="image-20231025223937497"></p><p>RestTemplate发起远程调用的代码缺点：</p><p>代码可读性差，编程体验不统一</p><p>参数复杂URL难以维护</p><h3 id="Feign方案"><a href="#Feign方案" class="headerlink" title="Feign方案"></a>Feign方案</h3><p>编写Feign的客户端：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@FeignClient(&quot;userservice&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">UserClient</span> &#123;</span><br><span class="line">    <span class="meta">@GetMapping(&quot;/user/&#123;id&#125;&quot;)</span></span><br><span class="line">    User <span class="title function_">findById</span><span class="params">(<span class="meta">@PathVariable(&quot;id&quot;)</span> Long id)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>调用</p><img src="/img/22987/cloud8.png" alt="image-20231025224218162" style="zoom:80%;" /><h2 id="🍁Gateway服务网关"><a href="#🍁Gateway服务网关" class="headerlink" title="🍁Gateway服务网关"></a>🍁Gateway服务网关</h2><h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p><img src="/img/22987/cloud9.png" alt="image-20231025224517110"></p><p><strong>权限控制</strong>：网关作为微服务入口，需要校验用户是是否有请求资格，如果没有则进行拦截。</p><p><strong>路由和负载均衡</strong>：一切请求都必须先经过gateway，但网关不处理业务，而是根据某种规则，把请求转发到某个微服务，这个过程叫做<strong>路由</strong>。当然路由的目标服务有多个时，还需要做负载均衡。</p><p><strong>限流</strong>：当请求流量过高时，在网关中按照下流的微服务能够接受的速度来放行请求，避免服务压力过大。</p><h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><p><img src="/img/22987/cloud10.png" alt="image-20231025224740104"></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 分布式 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 分布式 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>背包问题</title>
       <link href="/posts/60354/"/>
       <url>/posts/60354/</url>
