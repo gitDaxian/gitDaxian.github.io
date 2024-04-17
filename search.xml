@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>Redis持久化与数据</title>
+      <link href="/posts/34000/"/>
+      <url>/posts/34000/</url>
+      
+        <content type="html"><![CDATA[<h2 id="🍁持久化"><a href="#🍁持久化" class="headerlink" title="🍁持久化"></a>🍁持久化</h2><h3 id="RDB"><a href="#RDB" class="headerlink" title="RDB"></a>RDB</h3><blockquote><p>RDB全称为Redis Database Backup file（Redis数据备份文件），也被叫做<strong>Redis数据快照</strong>。简单来说就是把<strong>内存中的所有数据都记录到磁盘</strong>中。当Redis实例故障重启后，从磁盘读取快照文件，恢复数据</p></blockquote><p>save命令：由Redis主进程来执行RDB，会阻塞所有命令</p><p>bgsave命令：开启子进程执行RDB，避免主进程受到影响</p><p>​bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据。完成fork后读取内存数据并写入 RDB 文件。</p><h3 id="AOF"><a href="#AOF" class="headerlink" title="AOF"></a>AOF</h3><blockquote><p>AOF全称为Append Only File（追加文件）。Redis处理的每一个写命令都会记录在AOF文件，可以看做是命令日志文件</p></blockquote><p>redis.conf配置文件</p><p>appendfsync always ：表示每执行一次写命令，立即记录到AOF文件</p><p>appendfsync everysec ：写命令执行完先放入AOF缓冲区，然后表示每隔1秒将缓冲区数据写到AOF文件，是默认方案</p><p>appendfsync no：写命令执行完先放入AOF缓冲区，由操作系统决定何时将缓冲区内容写回磁盘</p><h3 id="对比"><a href="#对比" class="headerlink" title="对比"></a>对比</h3><table><thead><tr><th></th><th>RDB</th><th>AOF</th></tr></thead><tbody><tr><td>持久化方式</td><td>定时对整个内存做快照</td><td>记录每一次执行的命令</td></tr><tr><td>数据完整性</td><td>不完整，两次备份之间会丢失</td><td>相对完整，取决于刷盘策略</td></tr><tr><td>文件大小</td><td>会有压缩，文件体积小</td><td>记录命令，文件体积很大</td></tr><tr><td>宕机恢复速度</td><td>快</td><td>慢</td></tr><tr><td>数据恢复优先级</td><td>低，因为数据完整性不如AOF</td><td>高，因为数据完整性更高</td></tr><tr><td>系统资源占用</td><td>高，大量CPU和内存消耗</td><td>低，主要是磁盘IO资源，但<br />AOF重写时会占用大量CPU和内存资源</td></tr><tr><td>使用场景</td><td>可以容忍数分钟的数据丢失，<br />追求更快的启动速度</td><td>对数据安全性要求较高</td></tr></tbody></table><h2 id="🍁数据删除策略"><a href="#🍁数据删除策略" class="headerlink" title="🍁数据删除策略"></a>🍁数据删除策略</h2><blockquote><p>Redis对数据设置数据的有效时间，数据过期以后，就需要将数据从内存中删除掉。可以按照不同的规则进行删除，这种删除规则就被称之为数据的删除策略。</p></blockquote><h3 id="惰性删除"><a href="#惰性删除" class="headerlink" title="惰性删除"></a>惰性删除</h3><p>设置该key过期时间后，不去管它，<strong>当需要该key时，再检查其是否过期</strong>，如果过期，就删掉它，反之返回该key</p><p><strong>优点</strong> ：对CPU友好，只会在使用该key时才会进行过期检查，对于很多用不到的key不用浪费时间进行过期检查</p><p><strong>缺点</strong> ：对内存不友好，如果一个key已经过期，但是一直没有使用，那么该key就会一直存在内存中，内存永远不会释放</p><h3 id="定期删除"><a href="#定期删除" class="headerlink" title="定期删除"></a>定期删除</h3><p><strong>每隔一段时间，就对一些key进行检查</strong>，删除里面过期的key(从一定数量的数据库中取出一定数量的随机key进行检查，并删除其中的过期key)</p><p><strong>优点</strong>：可以通过限制删除操作执行的时长和频率来减少删除操作对 CPU 的影响。另外定期删除，也能有效释放过期键占用的内存。</p><p><strong>缺点</strong>：难以确定删除操作执行的时长和频率。</p><h2 id="🍁数据淘汰策略"><a href="#🍁数据淘汰策略" class="headerlink" title="🍁数据淘汰策略"></a>🍁数据淘汰策略</h2><blockquote><p>当Redis中的内存不够用时，此时在向Redis中添加新的key，那么Redis就会按照某一种规则将内存中的数据删除掉，这种数据的删除规则被称之为内存的淘汰策略。</p></blockquote><p><strong>淘汰策略</strong></p><ol><li>unoeviction： 不淘汰任何key，但是内存满时不允许写入新数据，默认就是这种策略。</li><li>uvolatile-ttl： 对设置了TTL的key，比较key的剩余TTL值，TTL越小越先被淘汰</li><li>uallkeys-random：对全体key ，随机进行淘汰。</li><li>uvolatile-random：对设置了TTL的key ，随机进行淘汰。</li><li>uallkeys-lru： 对全体key，基于LRU算法进行淘汰</li><li>uvolatile-lru： 对设置了TTL的key，基于LRU算法进行淘汰</li><li>uallkeys-lfu： 对全体key，基于LFU算法进行淘汰</li><li>uvolatile-lfu： 对设置了TTL的key，基于LFU算法进行淘汰</li></ol><p>其中的LRU和LFU算法：</p><ul><li><strong>LRU</strong>（<strong>L</strong>east <strong>R</strong>ecently <strong>U</strong>sed）：最近最少使用。用当前时间减去最后一次访问时间，这个值越大则淘汰优先级越高。</li><li><strong>LFU</strong>（<strong>L</strong>east <strong>F</strong>requently <strong>U</strong>sed）：最少频率使用。会统计每个key的访问频率，值越小淘汰优先级越高。</li></ul><p><strong>设置建议</strong></p><ol><li>优先使用 allkeys-lru 策略。充分利用 LRU 算法的优势，把最近最常访问的数据留在缓存中。如果业务有明显的冷热数据区分，建议使用。</li><li>如果业务中数据访问频率差别不大，没有明显冷热数据区分，建议使用 allkeys-random，随机选择淘汰。</li><li>如果业务中有置顶的需求，可以使用 volatile-lru 策略，同时置顶数据不设置过期时间，这些数据就一直不被删除，会淘汰其他设置过期时间的数据。</li><li>如果业务中有短时高频访问的数据，可以使用 allkeys-lfu 或 volatile-lfu 策略</li></ol><p><strong>数据库有1000万数据 ,Redis只能缓存20w数据, 如何保证Redis中的数据都是热点数据 ?</strong> </p><p>使用allkeys-lru(挑选最近最少使用的数据淘汰)淘汰策略，留下来的都是经常访问的热点数据</p><p><strong>Redis的内存用完了会发生什么？</strong></p><p>主要看数据淘汰策略是什么？如果是默认的配置（ noeviction ），会直接报错</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Redis </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Redis双写一致性</title>
       <link href="/posts/47804/"/>
       <url>/posts/47804/</url>
