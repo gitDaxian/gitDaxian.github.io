@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>Redis双写一致性</title>
+      <link href="/posts/47804/"/>
+      <url>/posts/47804/</url>
+      
+        <content type="html"><![CDATA[<h2 id="🍁概述"><a href="#🍁概述" class="headerlink" title="🍁概述"></a>🍁概述</h2><blockquote><p>双写一致性：当修改了数据库的数据也要同时更新缓存的数据，缓存和数据库的数据要保持一致</p></blockquote><p><img src="/img/47804/Redis1.png" alt="image-20240417171936532"></p><p>分为<strong>允许延迟一致、一致性要求高</strong>两种情况</p><h2 id="🍁延迟一致"><a href="#🍁延迟一致" class="headerlink" title="🍁延迟一致"></a>🍁延迟一致</h2><h3 id="延迟双删"><a href="#延迟双删" class="headerlink" title="延迟双删"></a>延迟双删</h3><p><img src="/img/47804/Redis2.png" alt="image-20240417172031852"></p><p>对于写操作，先把缓存中的数据删除，然后更新数据库，最后再延时删除缓存中的数据，<strong>这一步的目的是把别的线程读取的旧数据缓存删除</strong>，其中这个延时多久不太好确定</p><p>缺点：容易出现读脏数据风险</p><h3 id="异步通知"><a href="#异步通知" class="headerlink" title="异步通知"></a>异步通知</h3><h4 id="1-MQ"><a href="#1-MQ" class="headerlink" title="1 MQ"></a>1 MQ</h4><p>异步通知保证数据的最终一致性</p><p><img src="/img/47804/Redis3.png" alt="image-20240417200224401"></p><h3 id="2-Canel"><a href="#2-Canel" class="headerlink" title="2 Canel"></a>2 Canel</h3><p>canal是基于mysql的主从同步来实现的</p><p><img src="/img/47804/Redis4.png" alt="image-20240417200319104"></p><h2 id="🍁强一致性"><a href="#🍁强一致性" class="headerlink" title="🍁强一致性"></a>🍁强一致性</h2><p>利用Redisson提供的读写锁</p><p><img src="/img/47804/Redis5.png" alt="image-20240417200725955"></p><p><strong>共享锁：</strong>读锁readLock，加锁之后，其他线程可以共享读操作 </p><img src="/img/47804/Redis6.png" alt="image-20240417200815565" style="zoom: 50%;" />  <p><strong>排他锁：</strong>独占锁writeLock也叫，加锁之后，阻塞其他线程读写操作<img src="/img/47804/Redis7.png" alt="image-20240417200844777" style="zoom: 50%;" /></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Redis </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>JUC工具</title>
       <link href="/posts/22027/"/>
       <url>/posts/22027/</url>
